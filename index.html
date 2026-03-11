@@ -50,7 +50,7 @@
             font-size: 0.95rem;
         }
 
-        /* 資訊咭片設計 */
+        /* ================= 資訊咭片全新設計 (左右排版) ================= */
         .card {
             background-color: #f4fbff;
             border: 2px solid #99d2f8;
@@ -59,49 +59,70 @@
             overflow: hidden;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             transition: transform 0.2s;
+            display: flex; /* 使用 Flexbox 讓內容橫向排列 */
+            align-items: stretch; /* 讓左右兩邊等高 */
         }
 
         .card:active {
             transform: scale(0.98);
         }
 
-        /* 卡片標題區塊 */
-        .card h3 {
-            background-color: #d8f0ff;
-            color: #007bb5;
-            margin: 0;
-            padding: 12px 15px;
-            font-size: 1.15rem;
-            border-bottom: 2px solid #99d2f8;
+        /* 左側：零件 Icon 區塊 */
+        .card-icon {
+            width: 100px; /* 固定左側寬度 */
+            background-color: #d8f0ff; /* 延續之前的淺藍色標題底色 */
+            border-right: 2px solid #99d2f8;
             display: flex;
             align-items: center;
-            gap: 8px;
+            justify-content: center;
+            padding: 10px;
+            flex-shrink: 0; /* 防止圖片區塊被擠壓 */
         }
 
-        /* 卡片內容區塊 */
-        .card-body {
-            padding: 15px;
+        .card-icon img {
+            width: 100%;
+            max-width: 80px; /* 限制圖片最大寬度 */
+            height: auto;
+            object-fit: contain; /* 確保圖片不變形 */
         }
 
-        .card-body p {
-            margin: 8px 0;
+        /* 右側：資訊內容區塊 */
+        .card-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 12px 15px;
+        }
+
+        /* 卡片標題 */
+        .card-content h3 {
+            color: #007bb5;
+            margin: 0 0 8px 0;
+            font-size: 1.2rem;
+            border-bottom: 2px dashed #99d2f8; /* 改用虛線分隔標題與內文 */
+            padding-bottom: 8px;
+        }
+
+        /* 卡片內文 */
+        .card-content p {
+            margin: 6px 0;
             color: #444;
             font-size: 0.95rem;
-            line-height: 1.5;
+            line-height: 1.4;
         }
 
         /* 庫存狀態顏色 */
         .status-low {
-            color: #d9534f; 
+            color: #d9534f !important; 
             font-weight: bold;
-            margin-top: 12px !important;
+            margin-top: 10px !important;
             font-size: 1.05rem !important;
         }
 
         .status-ok {
-            color: #28a745; 
+            color: #28a745 !important; 
             font-weight: bold;
-            margin-top: 12px !important;
+            margin-top: 10px !important;
             font-size: 1.05rem !important;
         }
 
@@ -202,16 +223,16 @@
         const container = document.getElementById('cards-container');
         container.innerHTML = ''; 
 
-        // 1. 定義固定的四個零件名稱與預設資料
+        // 1. 定義固定的四個零件名稱，並綁定對應的圖片檔名
         const targetParts = ['齒輪', '摩打', '方框', '長臂'];
         const partData = {
-            '齒輪': { quantity: 0, date: '無紀錄', time: '' },
-            '摩打': { quantity: 0, date: '無紀錄', time: '' },
-            '方框': { quantity: 0, date: '無紀錄', time: '' },
-            '長臂': { quantity: 0, date: '無紀錄', time: '' }
+            '齒輪': { quantity: 0, date: '無紀錄', time: '', img: 'gear.png' },
+            '摩打': { quantity: 0, date: '無紀錄', time: '', img: 'motor.png' },
+            '方框': { quantity: 0, date: '無紀錄', time: '', img: '7x5.png' },
+            '長臂': { quantity: 0, date: '無紀錄', time: '', img: 'arm.png' }
         };
 
-        // 2. 逐行讀取 Google Sheet 資料，如果有符合的零件，就將數量累加
+        // 2. 逐行讀取 Google Sheet 資料，將數量累加，並更新最新時間
         for (let i = 1; i < rows.length; i++) {
             const rowData = rows[i];
             if (rowData.length < 4 || !rowData[2]) continue;
@@ -219,23 +240,22 @@
             const partName = rowData[2].trim();
             
             if (partData.hasOwnProperty(partName)) {
-                // 更新為最新的日期與時間
                 partData[partName].date = rowData[0] ? rowData[0].trim() : '未知日期';
                 partData[partName].time = rowData[1] ? rowData[1].trim() : '未知時間';
                 
-                // 將數量進行「加總」 (+=)
                 const quantityStr = rowData[3] ? rowData[3].replace(/,/g, '').trim() : '0';
                 const quantityVal = parseInt(quantityStr, 10) || 0;
                 partData[partName].quantity += quantityVal; 
             }
         }
 
-        // 3. 按照固定順序（齒輪 -> 摩打 -> 方框 -> 長臂）產生卡片
+        // 3. 按照固定順序產生左右排版的卡片
         targetParts.forEach(partName => {
             const data = partData[partName];
             const quantity = data.quantity;
             let dateDisplay = data.date;
             if (data.time) dateDisplay += ` ${data.time}`;
+            const imageSrc = data.img;
 
             let stockStatusHtml = '';
             if (quantity < 30) {
@@ -244,17 +264,16 @@
                 stockStatusHtml = `<p class="status-ok">✅ 庫存充足！數量餘（${quantity}）</p>`;
             }
 
-            let icon = '⚙️';
-            if (partName === '摩打') icon = '⚡';
-            if (partName === '方框') icon = '🔲';
-            if (partName === '長臂') icon = '📏';
-
+            // 組裝 HTML：左側是圖片 (<div class="card-icon">)，右側是文字 (<div class="card-content">)
             const cardHtml = `
                 <div class="card">
-                    <h3>${icon} ${partName}</h3>
-                    <div class="card-body">
-                        <p><strong>零件總數量：</strong>${quantity}</p>
-                        <p><strong>上次異動：</strong>${dateDisplay}</p>
+                    <div class="card-icon">
+                        <img src="${imageSrc}" alt="${partName}">
+                    </div>
+                    <div class="card-content">
+                        <h3>${partName}</h3>
+                        <p><strong>總數量：</strong>${quantity}</p>
+                        <p><strong>上次異動：</strong><br>${dateDisplay}</p>
                         ${stockStatusHtml}
                     </div>
                 </div>
