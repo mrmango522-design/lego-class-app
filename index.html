@@ -211,19 +211,22 @@
             '長臂': { quantity: 0, date: '無紀錄', time: '' }
         };
 
-        // 2. 逐行讀取 Google Sheet 資料，如果有符合的零件，就更新它的資料
+        // 2. 逐行讀取 Google Sheet 資料，如果有符合的零件，就將數量累加
         for (let i = 1; i < rows.length; i++) {
             const rowData = rows[i];
             if (rowData.length < 4 || !rowData[2]) continue;
 
             const partName = rowData[2].trim();
             
-            // 如果這行資料的零件名稱存在於我們的預設清單中，就更新資料
             if (partData.hasOwnProperty(partName)) {
+                // 更新為最新的日期與時間
                 partData[partName].date = rowData[0] ? rowData[0].trim() : '未知日期';
                 partData[partName].time = rowData[1] ? rowData[1].trim() : '未知時間';
+                
+                // 將數量進行「加總」 (+=)
                 const quantityStr = rowData[3] ? rowData[3].replace(/,/g, '').trim() : '0';
-                partData[partName].quantity = parseInt(quantityStr, 10) || 0;
+                const quantityVal = parseInt(quantityStr, 10) || 0;
+                partData[partName].quantity += quantityVal; 
             }
         }
 
@@ -241,7 +244,6 @@
                 stockStatusHtml = `<p class="status-ok">✅ 庫存充足！數量餘（${quantity}）</p>`;
             }
 
-            // 針對不同零件給予不同的小圖示（選用）
             let icon = '⚙️';
             if (partName === '摩打') icon = '⚡';
             if (partName === '方框') icon = '🔲';
@@ -251,7 +253,7 @@
                 <div class="card">
                     <h3>${icon} ${partName}</h3>
                     <div class="card-body">
-                        <p><strong>零件數量：</strong>${quantity}</p>
+                        <p><strong>零件總數量：</strong>${quantity}</p>
                         <p><strong>上次異動：</strong>${dateDisplay}</p>
                         ${stockStatusHtml}
                     </div>
@@ -261,7 +263,6 @@
         });
     }
 
-    // 載入完成後自動執行讀取
     window.onload = fetchSheetData;
 </script>
 </body>
