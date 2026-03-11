@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>LEGO零件櫃</title>
     <style>
-        /* 基礎設定與背景 (參考圖片的奶油色背景) */
+        /* 基礎設定與背景 */
         body {
             margin: 0;
             padding: 0;
@@ -24,7 +24,7 @@
             position: relative;
         }
 
-        /* 頂部標題列 (參考圖片的深橘棕色字體與無背景框設計) */
+        /* 頂部標題列 */
         header {
             color: #b94a00;
             text-align: center;
@@ -34,10 +34,10 @@
             position: sticky;
             top: 0;
             z-index: 100;
-            background-color: #fbf5e6; /* 隨同往上捲動時遮蔽後方元素 */
+            background-color: #fbf5e6;
         }
 
-        /* 系統狀態橫幅 (參考圖片上方的黃色系統模式框) */
+        /* 系統狀態橫幅 */
         .status-banner {
             background-color: #fef0cd;
             border: 2px solid #fce28b;
@@ -50,7 +50,7 @@
             font-size: 0.95rem;
         }
 
-        /* 資訊咭片設計 (參考圖片右側的淺藍色面板) */
+        /* 資訊咭片設計 */
         .card {
             background-color: #f4fbff;
             border: 2px solid #99d2f8;
@@ -65,7 +65,7 @@
             transform: scale(0.98);
         }
 
-        /* 卡片標題區塊 (淺藍底、藍字) */
+        /* 卡片標題區塊 */
         .card h3 {
             background-color: #d8f0ff;
             color: #007bb5;
@@ -90,16 +90,16 @@
             line-height: 1.5;
         }
 
-        /* 庫存狀態顏色 (參考圖片的紅/綠文字) */
+        /* 庫存狀態顏色 */
         .status-low {
-            color: #d9534f; /* 參考排除雜訊按鈕的紅色 */
+            color: #d9534f; 
             font-weight: bold;
             margin-top: 12px !important;
             font-size: 1.05rem !important;
         }
 
         .status-ok {
-            color: #28a745; /* 參考AI就緒的綠色 */
+            color: #28a745; 
             font-weight: bold;
             margin-top: 12px !important;
             font-size: 1.05rem !important;
@@ -202,18 +202,37 @@
         const container = document.getElementById('cards-container');
         container.innerHTML = ''; 
 
-        let hasData = false;
+        // 1. 定義固定的四個零件名稱與預設資料
+        const targetParts = ['齒輪', '摩打', '方框', '長臂'];
+        const partData = {
+            '齒輪': { quantity: 0, date: '無紀錄', time: '' },
+            '摩打': { quantity: 0, date: '無紀錄', time: '' },
+            '方框': { quantity: 0, date: '無紀錄', time: '' },
+            '長臂': { quantity: 0, date: '無紀錄', time: '' }
+        };
+
+        // 2. 逐行讀取 Google Sheet 資料，如果有符合的零件，就更新它的資料
         for (let i = 1; i < rows.length; i++) {
             const rowData = rows[i];
-            
             if (rowData.length < 4 || !rowData[2]) continue;
-            hasData = true;
 
-            const date = rowData[0] ? rowData[0].trim() : '未知日期';
-            const time = rowData[1] ? rowData[1].trim() : '未知時間';
-            const partName = rowData[2] ? rowData[2].trim() : '未命名零件';
-            const quantityStr = rowData[3] ? rowData[3].replace(/,/g, '').trim() : '0';
-            const quantity = parseInt(quantityStr, 10) || 0;
+            const partName = rowData[2].trim();
+            
+            // 如果這行資料的零件名稱存在於我們的預設清單中，就更新資料
+            if (partData.hasOwnProperty(partName)) {
+                partData[partName].date = rowData[0] ? rowData[0].trim() : '未知日期';
+                partData[partName].time = rowData[1] ? rowData[1].trim() : '未知時間';
+                const quantityStr = rowData[3] ? rowData[3].replace(/,/g, '').trim() : '0';
+                partData[partName].quantity = parseInt(quantityStr, 10) || 0;
+            }
+        }
+
+        // 3. 按照固定順序（齒輪 -> 摩打 -> 方框 -> 長臂）產生卡片
+        targetParts.forEach(partName => {
+            const data = partData[partName];
+            const quantity = data.quantity;
+            let dateDisplay = data.date;
+            if (data.time) dateDisplay += ` ${data.time}`;
 
             let stockStatusHtml = '';
             if (quantity < 30) {
@@ -222,24 +241,27 @@
                 stockStatusHtml = `<p class="status-ok">✅ 庫存充足！數量餘（${quantity}）</p>`;
             }
 
+            // 針對不同零件給予不同的小圖示（選用）
+            let icon = '⚙️';
+            if (partName === '摩打') icon = '⚡';
+            if (partName === '方框') icon = '🔲';
+            if (partName === '長臂') icon = '📏';
+
             const cardHtml = `
                 <div class="card">
-                    <h3>⚙️ ${partName}</h3>
+                    <h3>${icon} ${partName}</h3>
                     <div class="card-body">
                         <p><strong>零件數量：</strong>${quantity}</p>
-                        <p><strong>上次異動：</strong>${date} ${time}</p>
+                        <p><strong>上次異動：</strong>${dateDisplay}</p>
                         ${stockStatusHtml}
                     </div>
                 </div>
             `;
             container.innerHTML += cardHtml;
-        }
-
-        if (!hasData) {
-            container.innerHTML = '<div class="loading">目前表格中沒有資料。</div>';
-        }
+        });
     }
 
+    // 載入完成後自動執行讀取
     window.onload = fetchSheetData;
 </script>
 </body>
